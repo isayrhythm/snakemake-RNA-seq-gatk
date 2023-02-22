@@ -23,5 +23,5 @@ if __name__ == '__main__':
     for i in args_task:
         task_thread = threading.Thread(target=download, args=(i,))
         task_thread.start()
-        print(i)
+        print(i)  
 

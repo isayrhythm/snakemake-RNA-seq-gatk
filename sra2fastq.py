@@ -18,4 +18,4 @@ if __name__ == '__main__':
     for sra_path in nalist:
         task_thread = threading.Thread(target=sra2fastq, args=(sra_path,))
         task_thread.start()
-        print(sra_path)
+        print(sra_path)  

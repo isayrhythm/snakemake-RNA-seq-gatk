@@ -2,17 +2,17 @@
 
 ### 配置所需的软件包
 
-* hisat2 
-* samtools 
-* sratoolkit 
-* fastqc
-* trimmomatic
+* hisat2 （比对到基因组）
+* samtools （sam格式处理）
+* sratoolkit （下SRA）
+* fastqc （质控）
+* fastp（自动化质控报告）
 
 
 ### 下载SRA
 1. prefetch 
 >prefetch SRA*** -O 输出目录
-
+#prefetch也很快，突然就很快
 2. docker安装kingfisher(主要是用conda依赖一堆，github下载慢)
 
 >docker run -v $PWD wwood/kingfisher:0.1.2 get -r SRR23330487 -m ena-ascp ena-ftp prefetch aws-http
@@ -35,6 +35,8 @@
 
 >hisat2-build --ss c_elegans.splice_sites.gtf --exon c_elegans.exon.gtf GCF_000002985.6_WBcel235_genomic.fna c.elegans
 
+**以下开始使用snakemake**
+
 比对：
 
 >hisat2 --time --threads 10 -x /home/luotao/c.elegans/RNA-seq/ref/c.elegans -1 /home/luotao/c.elegans/RNA-seq/sra/SRR23330487/clean_data/SRR23330487_1.fq -2 /home/luotao/c.elegans/RNA-seq/sra/SRR23330487/clean_data/SRR23330487_2.fq -S /home/luotao/c.elegans/RNA-seq/sra/SRR23330487/sam/SRR23330487.sam
@@ -42,16 +44,18 @@
 sam转化为bam：
 
 
+>samtools view -S {input} -b > {output} -@ {threads}
+-S sam， -b bam ，-@ 线程
 
+bam sorted，bam排序：
+>samtools sort {input} -o {output} -@ {threads}
 
+### reads计数
+>htseq-count -r name -f bam -n {threads} {input} {elegans_gtf}
+-r 排序方式 -f bam 文件格式  
 
-
-
-
-
-
-
-
+### 后续R语言分析
+代码另附
 
 
 
@@ -62,5 +66,5 @@ sam转化为bam：
 
 
 ### PS
-被CSDN气哭，一群傻逼下个SRA的方法过时了还抄来抄去
+~~~被CSDN气哭，一群傻逼下个SRA的方法过时了还抄来抄去~~~
 

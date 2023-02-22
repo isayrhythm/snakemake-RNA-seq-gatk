@@ -86,7 +86,3 @@ rule htseq:
 
 
 
-    
-    
-    
-    
