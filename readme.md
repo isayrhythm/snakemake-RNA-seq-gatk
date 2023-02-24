@@ -54,17 +54,31 @@ bam sorted，bam排序：
 >htseq-count -r name -f bam -n {threads} {input} {elegans_gtf}
 -r 排序方式 -f bam 文件格式  
 
+### RPKM、FPKM、TPM
+
+RPKM用于单端测序  
+FPKM双端测序：  
+readcount消除掉样品的差异，所以除以样品的总的readcount（双端测序为fragments）  
+再消除基因长度的差异，除以map到的基因的长度  
+TPM：
+对每个基因的read数用基因长度进行校正，之后再用这个校正数与校正后的这个样本的所以reads数求商
+(read/基因长度)/[(read/基因1长度)+(read/基因2长度)+...]  
+
+总之是为了消除样品不一致，与基因长度不一致的影响
+
 ### 后续R语言分析
 代码另附
 
 
 
+### snakemake运行代码
+>snakemake -s smk代码 --cores {thread} -pn
 
+流程图
+>snakemake --dag -s rawfq2count.smk.py | dot -Tsvg > dag.svg  
 
-
-
-
+svg改pdf可以生成pdf
 
 ### PS
-~~~被CSDN气哭，一群傻逼下个SRA的方法过时了还抄来抄去~~~
+~~被CSDN气哭，一群傻逼下个SRA的方法过时了还抄来抄去~~
 

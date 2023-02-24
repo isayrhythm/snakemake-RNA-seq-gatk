@@ -3,7 +3,7 @@ import os
 import threading
 
 
-inpath = '/home/luotao/forwork/RNA-seq/sra/'
+inpath = '/home/luotao/c.elegans/RNA-seq/sra2/'
 
 nalist = os.listdir(inpath)
 

@@ -3,12 +3,12 @@ import os
 import threading
 
 
-outpath = '/home/luotao/forwork/RNA-seq/sra/'
+outpath = '/home/luotao/c.elegans/RNA-seq/sra2/'
 
 
 args_task = [] 
 
-with open('/home/luotao/forwork/RNA-seq/sra/SraAccList.csv') as f:
+with open('/home/luotao/c.elegans/RNA-seq/sra2/SraAccList.csv') as f:
     for i in f:
         args_task.append(i[:-1])
 
