@@ -3,7 +3,7 @@ import os
 import threading
 
 
-inpath = '/home/luotao/c_elegans/RNA-seq/SRA_yy/'
+inpath = '/home/luotao/c_elegans/WGS/glycine_max/'
 
 nalist = os.listdir(inpath)
 

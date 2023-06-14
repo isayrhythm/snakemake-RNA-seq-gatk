@@ -1,84 +1,104 @@
 # snakemake with WGS/RNA-seq
 # 2022-5-28
 
- 
+
 # smaple
+import os
+smp_list = os.listdir('/home/luotao/c_elegans/WGS/glycine_max')
+smp_list = [i for i in smp_list if 'Miss' in i]
 
-SAMPLE_INDEX = ['WT1','WT2','WT3','sma_2_rax5__1','sma_2_rax5__2','sma_2_rax5__3','sma_4_rax3__1','sma_4_rax3__2','sma_4_rax3__3']
+SAMPLE_INDEX = smp_list
 
-elegans_gtf = '/home/luotao/c_elegans/RNA-seq/ref/GCF_000002985.6_WBcel235_genomic.gtf'
-genome = '/home/luotao/c_elegans/RNA-seq/ref/GCF_000002985.6_WBcel235_genomic.fna'    #参考库不能改
+
+# 执行文件的上层目录
+
+run_path = '/home/luotao/c_elegans/WGS/glycine_max/'
+
+
+# refrence
+elegans_gtf = '/home/luotao/c_elegans/WGS/ref/Glycine_max.Glycine_max_v2.1.56.gff3'
+genome = '/home/luotao/c_elegans/WGS/ref/Glycine_max.Glycine_max_v2.1.dna.toplevel.fa'    #参考库不能改
+
+
+# 创建索引
+# 使用dict结尾可以自动识别
+
+ref_dict = '/home/luotao/c_elegans/WGS/ref/Glycine_max.Glycine_max_v2.1.dna.toplevel.dict'
+
+if os.path.exists(ref_dict):
+    pass
+else:
+    genome_path = '/'.join(genome.split('/')[:-1])
+    os.system(f"docker run -it -v {genome_path}:{genome_path} --user $(id -u):$(id -g) broadinstitute/gatk:latest java -jar /gatk/gatk.jar CreateSequenceDictionary \
+        -R {genome} \
+        -O {ref_dict}")
+
+
+
+
+
+# rule start
+
+
 
 
 rule gvcf:
     input:
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data/{SAMPLE}_1.fq",SAMPLE=SAMPLE_INDEX),
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data/{SAMPLE}_2.fq",SAMPLE=SAMPLE_INDEX),
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data/fastp.html", SAMPLE=SAMPLE_INDEX),
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/sam/{SAMPLE}.sam",SAMPLE=SAMPLE_INDEX),
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}.bam",SAMPLE=SAMPLE_INDEX),
-        #expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_sorted.bam",SAMPLE=SAMPLE_INDEX),
-        expand("/home/luotao/c_elegans/RNA-seq/SRA_yy/out/{SAMPLE}.gvcf",SAMPLE=SAMPLE_INDEX)
-        
+        expand(run_path+"gvcf/{SAMPLE}.gvcf",SAMPLE=SAMPLE_INDEX)
+
 
 # 质控
 rule clean_data:
     input:
-        i1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_1.fastq", 
-        i2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_2.fastq"
+        i1 = run_path+"{SAMPLE}/{SAMPLE}_1.fastq", 
+        i2 = run_path+"{SAMPLE}/{SAMPLE}_2.fastq"
     output:
-        o1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data_SNP/{SAMPLE}_1.fq",
-        o2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data_SNP/{SAMPLE}_2.fq"
+        o1 = run_path+"{SAMPLE}/clean_data/{SAMPLE}_1.fq",
+        o2 = run_path+"{SAMPLE}/clean_data/{SAMPLE}_2.fq"
     threads: 16
     log:
-        "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data_SNP/fastp.html"
+        run_path+"{SAMPLE}/clean_data/fastp.html"
     
     shell:
-        "fastp -i {input.i1} -I {input.i2} -o {output.o1} -O {output.o2} -w {threads} -h {log} --trim_front1 13 --trim_tail1 1 "
-        # 切掉前方13个碱基，切掉末尾1个碱基
+        "fastp -i {input.i1} -I {input.i2} -o {output.o1} -O {output.o2} -w {threads} -h {log} --trim_front1 13"
+        # --trim_front1 13 切掉前方13个碱基，--trim_tail1 1 切掉末尾1个碱基
 
-# fastq2bam
-rule BWA_sam2bam:
+# fastq2sorted_bam
+rule BWA_sam2sorted_bam:
     input:
-        o1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data_SNP/{SAMPLE}_1.fq",
-        o2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/clean_data_SNP/{SAMPLE}_2.fq",
+        o1 = run_path+"{SAMPLE}/clean_data/{SAMPLE}_1.fq",
+        o2 = run_path+"{SAMPLE}/clean_data/{SAMPLE}_2.fq",
         
     params:
         p1 = "{SAMPLE}"
     output:
-        "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP.bam"
-    threads: 16
+        run_path+"{SAMPLE}/{SAMPLE}_sorted.bam"
+        
+    threads: 40
     shell:
         # 单端测序去掉-1 -2 使用-U
         # 参数-S 输入sam文件；参数-b 指定输出的文件为bam；最后重定向写入bam文件
-        "bwa mem {genome} {input.o1} {input.o2} -t {threads} -R '@RG\\tID:{params.p1}\\tSM:{params.p1}\\tPL:Illumina' | samtools view -@ {threads} -Sb - > {output} "
+        # -@：设置排序和压缩的线程数，默认单线程
         #    | samtools view -Sb - > 19P0126636WES.bam
         # -R 为添加RG信息 -R '@RG\tID:sample1\tSM:sample1\tPL:Illumina'
-
-        
-rule bam_sort:
-    input:
-        "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP.bam",
-    output:
-        "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP_sorted.bam"
-    threads: 20
-    shell:
-        # -@：设置排序和压缩的线程数，默认单线程
-        "samtools sort {input} -o {output} -@ {threads}"
+        "bwa mem {genome} {input.o1} {input.o2} -t {threads} -M -R '@RG\\tID:{params.p1}\\tSM:{params.p1}\\tPL:Illumina' | \
+        samtools view -@ {threads} -Sb - | \
+        samtools sort -@ {threads} -o {output} - "
         
         
 # 标记PCR重复  
 rule MarkDuplicates:
     input:
-        i1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP_sorted.bam",
-        i2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}"
+        i1 = run_path+"{SAMPLE}/{SAMPLE}_sorted.bam",
+        i2 = run_path+"{SAMPLE}"
     output:
-        o1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP.markdup.bam",
-        o2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP.markdup_metrics.txt"
+        o1 = run_path+"{SAMPLE}/{SAMPLE}.mkdup.bam",
+        o2 = run_path+"{SAMPLE}/{SAMPLE}.mkdup_metrics.txt"
     shell:
         # docker中调用
         # 创建比对索引文件
         # 将会生成.bai文件
+        # 可以指定内存 –java-options "-Xmx4g"
         "docker run -it -v {input.i2}:{input.i2} --user $(id -u):$(id -g) broadinstitute/gatk:latest java -jar /gatk/gatk.jar MarkDuplicates \
         -I {input.i1} \
         -O {output.o1} \
@@ -87,34 +107,25 @@ rule MarkDuplicates:
 
 #docker run -it -v /home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337:/home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337 broadinstitute/gatk:latest java -jar /gatk/gatk.jar MarkDuplicates         -I /home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337/SRR5851337_SNP_sorted.bam         -O /home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337/SRR5851337_SNP.markdup.bam         -M /home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337/SRR5851337_SNP.markdup_metrics.txt         ; samtools index /home/luotao/c_elegans/RNA-seq/SRA_yy/SRR5851337/SRR5851337_SNP.markdup.bam
 
-# 创建参考文件索引
-rule ref_dict:
-    input:
-        i1 = genome,
-        i2 = '/'.join(genome.split('/')[:-1])
-        
-    output:
-        '/home/luotao/c_elegans/RNA-seq/ref/GCF_000002985.6_WBcel235_genomic.dict',
-    shell:
-        "docker run -it -v {input.i2}:{input.i2} --user $(id -u):$(id -g) broadinstitute/gatk:latest java -jar /gatk/gatk.jar CreateSequenceDictionary \
-        -R {input.i1} \
-        -O {output}"
+
         
         
         
 rule HaplotypeCaller:
     input:
-        i1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}/{SAMPLE}_SNP.markdup.bam",
-        i2 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/{SAMPLE}",
-        i3 = '/home/luotao/c_elegans/RNA-seq/ref/GCF_000002985.6_WBcel235_genomic.fna',
+        i1 = run_path+"{SAMPLE}/{SAMPLE}.mkdup.bam",
+        i2 = run_path+"{SAMPLE}",
+        i3 = genome,
         i4 = '/'.join(genome.split('/')[:-1])
+    params:
+        p1 = run_path+"gvcf"
     output:
-        o1 = "/home/luotao/c_elegans/RNA-seq/SRA_yy/out/{SAMPLE}.gvcf",
+        o1 = run_path+"gvcf/{SAMPLE}.gvcf",
     shell:
         "docker run -it \
         -v {input.i2}:{input.i2} \
         -v {input.i4}:{input.i4} \
-        -v /home/luotao/c_elegans/RNA-seq/SRA_yy/out:/home/luotao/c_elegans/RNA-seq/SRA_yy/out \
+        -v {params.p1}:{params.p1} \
         --user $(id -u):$(id -g) broadinstitute/gatk:latest java -jar /gatk/gatk.jar HaplotypeCaller \
         -R {input.i3} \
         -I {input.i1} \

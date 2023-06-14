@@ -3,9 +3,10 @@ import os,csv,shutil
 import threading
 
 
-outpath = '/home/luotao/c_elegans/RNA-seq/SRA_yy/'
+outpath = '/home/luotao/c_elegans/WGS/glycine_max/'
 
-sra_result = '/home/luotao/c_elegans/RNA-seq/SRA_yy/sra_result.csv'
+# 下载的是summary
+sra_result = '/home/luotao/c_elegans/WGS/glycine_max/sra_result.csv'
 
 args_task = [] 
 
