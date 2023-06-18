@@ -7,8 +7,9 @@ import os
 smp_list = os.listdir('/home/luotao/c_elegans/WGS/glycine_max')
 smp_list = [i for i in smp_list if 'Miss' in i]
 
-SAMPLE_INDEX = smp_list
+SAMPLE_INDEX = ['Missingdata_17k243','Missingdata_17K0263']# smp_list
 
+mark_list = ['2','3','4']
 
 # 执行文件的上层目录
 
@@ -21,7 +22,7 @@ genome = '/home/luotao/c_elegans/WGS/ref/Glycine_max.Glycine_max_v2.1.dna.toplev
 
 
 # 创建索引
-# 使用dict结尾可以自动识别
+# 使用dict结尾可以自动识别, 默认识别尾缀替换成.dict
 
 ref_dict = '/home/luotao/c_elegans/WGS/ref/Glycine_max.Glycine_max_v2.1.dna.toplevel.dict'
 
@@ -44,7 +45,7 @@ else:
 
 rule gvcf:
     input:
-        expand(run_path+"gvcf/{SAMPLE}.gvcf",SAMPLE=SAMPLE_INDEX)
+        expand(run_path+"gvcf/{SAMPLE}_{mark}.gvcf",SAMPLE=SAMPLE_INDEX,mark=mark_list)
 
 
 # 质控
@@ -116,11 +117,13 @@ rule HaplotypeCaller:
         i1 = run_path+"{SAMPLE}/{SAMPLE}.mkdup.bam",
         i2 = run_path+"{SAMPLE}",
         i3 = genome,
-        i4 = '/'.join(genome.split('/')[:-1])
+        i4 = '/'.join(genome.split('/')[:-1]),
+        
     params:
-        p1 = run_path+"gvcf"
+        p1 = run_path+"gvcf",  # 路径
+        p2 = '{mark}'  # 
     output:
-        o1 = run_path+"gvcf/{SAMPLE}.gvcf",
+        o1 = run_path+"gvcf/{SAMPLE}_{mark}.gvcf",
     shell:
         "docker run -it \
         -v {input.i2}:{input.i2} \
@@ -130,6 +133,8 @@ rule HaplotypeCaller:
         -R {input.i3} \
         -I {input.i1} \
         -O {output.o1} \
+        -L {params.p2} \
+        --native-pair-hmm-threads 4 \
         --emit-ref-confidence GVCF"
         
         
